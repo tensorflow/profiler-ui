@@ -1,0 +1,101 @@
+<!--
+Copyright 2018 Google Inc. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<!doctype html>
+<html>
+  <head>
+    <title>Profiler</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='images/favicon.png') }}" />
+    <style>
+      body {
+        background-color: #03a9f4;
+        color: #fff;
+        font-family: Roboto, sans-serif;
+        margin: 0;
+        padding: 0;
+      }
+
+      header .title {
+        font-size: 22px;
+        padding: 15px 24px 18px 26px;
+      }
+
+      header .title img {
+        margin: 0 3px 0 0;
+        transform: translate(0px, 3px);
+        height: 25.44px;
+        width: 24px;
+      }
+
+      .message {
+        font-size: 18px;
+        padding: 32px;
+        text-align: center;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <div class="title">
+        <img src="{{ url_for('static', filename='images/tf-400.png') }}">
+        Profiler
+      </div>
+    </header>
+
+    <div class="message"></div>
+
+    <script>
+      const messageEl = document.querySelector('.message');
+      const profileRegex = /profile_path=([^&]+)/;
+
+      // Handle incomplete URL case.
+      if (!profileRegex.test(location.search)) {
+        const errorMessage = 'Error: "profile_path" URL parameter is required.';
+        messageEl.innerText = errorMessage;
+        throw new Error(errorMessage);
+      }
+
+      const profile = location.search.match(profileRegex)[1];
+      let checks = 20;
+
+      function check() {
+        if (checks-- === 0) {
+          messageEl.innerText = `Error: Profile was not found at "${profile}".
+                                 You can refresh the page to check again.`;
+          return;
+        }
+
+        messageEl.innerText = `Looking for profile at "${profile}".`;
+
+        const url = '/check?profile_path=' + profile;
+        fetch(url, {credentials: 'include'})
+            .then((response) => response.json())
+            .then((response) => {
+              if (response.success) {
+                messageEl.innerText = `Profile was found! You will be redirected soon...`;
+                location.href = `/?profile_path=${profile}`;
+              } else {
+                // TODO(xpan, cfa): Need to revisit this timeout.
+                setTimeout(check, 1000);
+              }
+        });
+      }
+
+      check();
+    </script>
+  </body>
+</html>

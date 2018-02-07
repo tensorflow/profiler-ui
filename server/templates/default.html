@@ -1,0 +1,895 @@
+<!--
+Copyright 2018 Google Inc. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<!doctype html>
+<html>
+  <head>
+    <title>Profiler</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500">
+    <link rel="stylesheet" href="{{ mdc_base_url }}material-components-web.min.css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?ts={{timestamp}}" />
+    <link rel="shortcut icon" href="{{ url_for('static', filename='images/favicon.png') }}" />
+    <link rel="import" href="{{ url_for('static', filename='html/trace_viewer_full.html') }}">
+  </head>
+
+  <body>
+    <header class="mdc-elevation--z1">
+      <div class="title">
+        <img src="{{ url_for('static', filename='images/tf-400.png') }}">
+        Profiler
+      </div>
+
+      <a class="view-link mdc-ripple-surface"
+         data-mdc-auto-init="MDCRipple"
+         data-view="graph"
+         href="#"
+         title="Operations are organized based on input/output.">
+        Timeline
+      </a>
+
+      <a class="view-link mdc-ripple-surface"
+         data-mdc-auto-init="MDCRipple"
+         data-view="pprof"
+         href="#"
+         title="TensorFlow nodes are visualized in graph form by PPROF.">
+        PPROF
+      </a>
+
+      <a class="view-link mdc-ripple-surface"
+         data-mdc-auto-init="MDCRipple"
+         data-view="code"
+         href="#"
+         title="Operations are grouped by Python codes that generate them.">
+        Python
+      </a>
+
+      <a class="view-link mdc-ripple-surface"
+         data-mdc-auto-init="MDCRipple"
+         data-view="op"
+         href="#"
+         title="Operations are grouped by operation type (E.g. MatMul, Conv2D).">
+        Operation
+      </a>
+
+      <a class="view-link mdc-ripple-surface"
+         data-mdc-auto-init="MDCRipple"
+         data-view="scope"
+         href="#"
+         title="Operations are organized based on name scope hierarchies.">
+        Name Scope
+      </a>
+    </header>
+
+    <aside id="sidebar" class="sidebar">
+      <div class="mdc-select-container" title="Get started with a prebuilt set of options.">
+        <div class="mdc-select prebuilt" role="listbox" tabindex="0">
+          <label class="mdc-select-label">...</label>
+          <span class="mdc-select__selected-text">Pick a preset...</span>
+          <div class="mdc-simple-menu mdc-select__menu">
+            <ul class="mdc-list mdc-simple-menu__items">
+              <li class="mdc-list-item" role="option" aria-disabled="true">Pick a preset...</li>
+              <li class="mdc-list-item" role="option" tabindex="0"
+                  id='{"view":"scope","select":["params"],"order_by":"name","max_depth":10000,"min_bytes":0,"min_float_ops":0,"min_micros":0,"min_occurrence":0,"min_params":0,"account_type_regexes":[".*"],"account_displayed_op_only":true,"hide_name_regexes":[],"show_name_regexes":[".*"],"start_name_regexes":[".*"],"trim_name_regexes":[],"step":-1}'>
+                Profile Trainable Variables
+              </li>
+              <li class="mdc-list-item" role="option" tabindex="0"
+                  id='{"view":"op","select":["float_ops"],"order_by":"float_ops","max_depth":10000,"min_bytes":0,"min_float_ops":1,"min_micros":0,"min_occurrence":0,"min_params":0,"account_type_regexes":[".*"],"account_displayed_op_only":true,"hide_name_regexes":[],"show_name_regexes":[".*"],"start_name_regexes":[".*"],"trim_name_regexes":[],"step":-1}'>
+                Profile Float Operations
+              </li>
+              <li class="mdc-list-item" role="option" tabindex="0"
+                  id='{"view":"code","select":["bytes","micros"],"order_by":"name","max_depth":10000,"min_bytes":1,"min_float_ops":0,"min_micros":1,"min_occurrence":0,"min_params":0,"account_type_regexes":[".*"],"account_displayed_op_only":true,"hide_name_regexes":[],"show_name_regexes":[".*"],"start_name_regexes":[".*"],"trim_name_regexes":[],"step":-1}'>
+                Profile Time and Memory
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <label class="mdc-textfield button-select"
+             data-mdc-auto-init="MDCTextfield"
+             id="select-container"
+             title="Select one or more attributes.">
+        <input class="mdc-textfield__input"
+               data-type="string[]"
+               name="select"
+               spellcheck="false" />
+        <span class="mdc-textfield__label">Select</span>
+      </label>
+
+      <input class="mdc-textfield__input"
+             data-type="string"
+             name="order_by"
+             spellcheck="false"
+             style="display: none;" />
+
+      <div class="mdc-select-container"
+           id="order_by-container"
+           title="Order the results by an attribute.">
+        <div class="mdc-select order_by" role="listbox" tabindex="0">
+          <label class="mdc-select-label">Order By</label>
+          <span class="mdc-select__selected-text">...</span>
+          <div class="mdc-simple-menu mdc-select__menu">
+            <ul class="mdc-list mdc-simple-menu__items">
+              <li class="mdc-list-item" role="option" id="order_by_name" tabindex="0">name</li>
+              <li class="mdc-list-item" role="option" id="order_by_depth" tabindex="0">depth</li>
+              <li class="mdc-list-item" role="option" id="order_by_bytes" tabindex="0">bytes</li>
+              <li class="mdc-list-item" role="option" id="order_by_peak_bytes" tabindex="0">peak_bytes</li>
+              <li class="mdc-list-item" role="option" id="order_by_residual_bytes" tabindex="0">residual_bytes</li>
+              <li class="mdc-list-item" role="option" id="order_by_output_bytes" tabindex="0">output_bytes</li>
+              <li class="mdc-list-item" role="option" id="order_by_micros" tabindex="0">micros</li>
+              <li class="mdc-list-item" role="option" id="order_by_accelerator_micros" tabindex="0">accelerator_micros</li>
+              <li class="mdc-list-item" role="option" id="order_by_cpu_micros" tabindex="0">cpu_micros</li>
+              <li class="mdc-list-item" role="option" id="order_by_params" tabindex="0">params</li>
+              <li class="mdc-list-item" role="option" id="order_by_float_ops" tabindex="0">float_ops</li>
+              <li class="mdc-list-item" role="option" id="order_by_occurrence" tabindex="0">occurrence</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <label class="mdc-textfield"
+             data-mdc-auto-init="MDCTextfield"
+             title="Show nodes that are at most this number of hops from starting node in the data structure.">
+        <input class="mdc-textfield__input"
+               data-type="number"
+               name="max_depth" />
+        <span class="mdc-textfield__label">Max Depth</span>
+      </label>
+
+      <div class="mdc-button-container minimums">
+        <label for="button-minimums" class="mdc-button-label">Minimums</label>
+        <div class="summary mdc-textfield__input" data-hide-falsy-options="true">
+          <div title="Show nodes that request at least this number of bytes."
+               data-option="min_bytes">
+            Bytes: <span class="value"></span>
+          </div>
+
+          <div title="Show nodes that contain at least this number of float operations. Only available if an node has op.RegisterStatistics() defined and OpLogProto is provided."
+               data-option="min_float_ops">
+            Float Operations: <span class="value"></span>
+          </div>
+
+          <div title="Show nodes that spend at least this number of microseconds to run. It sums accelerator_micros and cpu_micros. Note: cpu and accelerator can run in parallel."
+               data-option="min_micros">
+            Micros: <span class="value"></span>
+          </div>
+
+          <div title="Show nodes that contains at least this number of parameters."
+               data-option="min_occurrence">
+            Occurrences: <span class="value"></span>
+          </div>
+
+          <div title="Show nodes that appear at least this number of times."
+               data-option="min_params">
+            Params: <span class="value"></span>
+          </div>
+        </div>
+        <button class="mdc-button mdc-button--raised mdc-theme--primary-bg mdc-ripple-surface"
+                data-mdc-auto-init="MDCRipple"
+                id="button-minimums"
+                name="button-minimums">
+          Configure
+        </button>
+      </div>
+
+      <label class="mdc-textfield"
+             data-mdc-auto-init="MDCTextfield"
+             title="Account and display the nodes whose types match one of the type regexes specified. tfprof allow user to define extra operation types for graph nodes through tensorflow.tfprof.OpLogProto proto. Regexes are comma-separated.">
+        <input class="mdc-textfield__input"
+               data-type="string[]"
+               name="account_type_regexes"
+               spellcheck="false" />
+        <span class="mdc-textfield__label">Account Op Type Regexes</span>
+      </label>
+
+      <div class="mdc-switch-container"
+           title="If True, only account the statistics of operations eventually displayed. If False, account all operation statistics matching 'Account Op Type Regexes' recursively.">
+        <label for="account_displayed_op_only" class="mdc-switch-label">Account Displayed Operations Only</label>
+        <div class="mdc-switch">
+          <input class="mdc-switch__native-control"
+                 data-type="boolean"
+                 type="checkbox"
+                 id="account_displayed_op_only"
+                 name="account_displayed_op_only" />
+          <div class="mdc-switch__background">
+            <div class="mdc-switch__knob"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mdc-button-container name-regexes">
+        <label for="button-name-regexes" class="mdc-button-label">Name Regexes</label>
+        <div class="summary mdc-textfield__input">
+          <div title="Hide node that match the regexes. Regexes are comma-separated."
+               data-option="hide_name_regexes">
+            Hide: <span class="value"></span>
+          </div>
+          <div title="Show node that match the regexes. Regexes are comma-separated."
+               data-option="show_name_regexes">
+            Show: <span class="value">.*</span>
+          </div>
+          <div title="Show node starting from the node that matches the regexes, recursively. Regexes are comma-separated."
+               data-option="start_name_regexes">
+            Start: <span class="value">.*</span>
+          </div>
+          <div title="Hide node starting from the node that matches the regexes, recursively. Regexes are comma-separated."
+               data-option="trim_name_regexes">
+            Trim: <span class="value"></span>
+          </div>
+        </div>
+        <button class="mdc-button mdc-button--raised mdc-theme--primary-bg mdc-ripple-surface"
+                data-mdc-auto-init="MDCRipple"
+                id="button-name-regexes"
+                name="button-name-regexes">
+          Configure
+        </button>
+      </div>
+
+      <label class="mdc-textfield"
+             data-mdc-auto-init="MDCTextfield"
+             title="Show the stats of the this step when multiple steps of RunMetadata were added. By default, show the average of all steps.">
+        <input class="mdc-textfield__input"
+               data-type="number"
+               name="step" />
+        <span class="mdc-textfield__label">Step</span>
+      </label>
+
+      <button class="mdc-button mdc-button--raised mdc-ripple-surface profile-button"
+              data-mdc-auto-init="MDCRipple">
+        Profile
+      </button>
+    </aside>
+
+    <div class="profiler-view-container">
+      <div class="profiler-view-catapult"></div>
+      <div class="profiler-view-svg"></div>
+      <pre class="profiler-view-text"></pre>
+    </div>
+
+    <aside aria-describedby="dialog-select-section"
+           aria-labelledby="dialog-select-label"
+           class="mdc-dialog"
+           id="dialog-select"
+           role="alertdialog">
+      <div class="mdc-dialog__surface">
+        <header class="mdc-dialog__header">
+          <h2 class="mdc-dialog__header__title"
+              id="dialog-select-label">
+            Select
+          </h2>
+        </header>
+
+        <section id="dialog-select-section" class="mdc-dialog__body">
+          <div class="mdc-checkbox-container">
+            <div class="mdc-form-field">
+              <div class="mdc-checkbox">
+                <input class="mdc-checkbox__native-control
+                              attribute-dialog-input"
+                        data-group="select"
+                        id="select-name"
+                        type="checkbox"
+                        value="name">
+                <div class="mdc-checkbox__background">
+                  <svg class="mdc-checkbox__checkmark"
+                       viewBox="0 0 24 24">
+                    <path class="mdc-checkbox__checkmark__path"
+                          d="M1.73,12.91 8.1,19.28 22.79,4.59"
+                          fill="none"
+                          stroke="white" />
+                  </svg>
+                  <div class="mdc-checkbox__mixedmark"></div>
+                </div>
+              </div>
+
+              <label for="select-name">Name</label>
+            </div>
+          </div>
+
+          <div class="mdc-checkbox-container">
+            <div class="mdc-form-field">
+              <div class="mdc-checkbox">
+                <input class="mdc-checkbox__native-control
+                              attribute-dialog-input"
+                        data-group="select"
+                        id="select-bytes"
+                        type="checkbox"
+                        value="bytes">
+                <div class="mdc-checkbox__background">
+                  <svg class="mdc-checkbox__checkmark"
+                       viewBox="0 0 24 24">
+                    <path class="mdc-checkbox__checkmark__path"
+                          d="M1.73,12.91 8.1,19.28 22.79,4.59"
+                          fill="none"
+                          stroke="white" />
+                  </svg>
+                  <div class="mdc-checkbox__mixedmark"></div>
+                </div>
+              </div>
+
+              <label for="select-bytes">Bytes</label>
+            </div>
+          </div>
+
+          <div class="mdc-checkbox-container">
+            <div class="mdc-form-field">
+              <div class="mdc-checkbox">
+                <input class="mdc-checkbox__native-control
+                              attribute-dialog-input"
+                        data-group="select"
+                        id="select-peak_bytes"
+                        type="checkbox"
+                        value="peak_bytes">
+                <div class="mdc-checkbox__background">
+                  <svg class="mdc-checkbox__checkmark"
+                       viewBox="0 0 24 24">
+                    <path class="mdc-checkbox__checkmark__path"
+                          d="M1.73,12.91 8.1,19.28 22.79,4.59"
+                          fill="none"
+                          stroke="white" />
+                  </svg>
+                  <div class="mdc-checkbox__mixedmark"></div>
+                </div>
+              </div>
+
+              <label for="select-peak_bytes">Peak Bytes</label>
+            </div>
+          </div>
+
+          <div class="mdc-checkbox-container">
+            <div class="mdc-form-field">
+              <div class="mdc-checkbox">
+                <input class="mdc-checkbox__native-control
+                              attribute-dialog-input"
+                        data-group="select"
+                        id="select-residual_bytes"
+                        type="checkbox"
+                        value="residual_bytes">
+                <div class="mdc-checkbox__background">
+                  <svg class="mdc-checkbox__checkmark"
+                       viewBox="0 0 24 24">
+                    <path class="mdc-checkbox__checkmark__path"
+                          d="M1.73,12.91 8.1,19.28 22.79,4.59"
+                          fill="none"
+                          stroke="white" />
+                  </svg>
+                  <div class="mdc-checkbox__mixedmark"></div>
+                </div>
+              </div>
+
+              <label for="select-residual_bytes">Residual Bytes</label>
+            </div>
+          </div>
+
+          <div class="mdc-checkbox-container">
+            <div class="mdc-form-field">
+              <div class="mdc-checkbox">
+                <input class="mdc-checkbox__native-control
+                              attribute-dialog-input"
+                        data-group="select"
+                        id="select-output_bytes"
+                        type="checkbox"
+                        value="output_bytes">
+                <div class="mdc-checkbox__background">
+                  <svg class="mdc-checkbox__checkmark"
+                       viewBox="0 0 24 24">
+                    <path class="mdc-checkbox__checkmark__path"
+                          d="M1.73,12.91 8.1,19.28 22.79,4.59"
+                          fill="none"
+                          stroke="white" />
+                  </svg>
+                  <div class="mdc-checkbox__mixedmark"></div>
+                </div>
+              </div>
+
+              <label for="select-output_bytes">Output Bytes</label>
+            </div>
+          </div>
+
+          <div class="mdc-checkbox-container">
+            <div class="mdc-form-field">
+              <div class="mdc-checkbox">
+                <input class="mdc-checkbox__native-control
+                              attribute-dialog-input"
+                        data-group="select"
+                        id="select-micros"
+                        type="checkbox"
+                        value="micros">
+                <div class="mdc-checkbox__background">
+                  <svg class="mdc-checkbox__checkmark"
+                       viewBox="0 0 24 24">
+                    <path class="mdc-checkbox__checkmark__path"
+                          d="M1.73,12.91 8.1,19.28 22.79,4.59"
+                          fill="none"
+                          stroke="white" />
+                  </svg>
+                  <div class="mdc-checkbox__mixedmark"></div>
+                </div>
+              </div>
+
+              <label for="select-micros">Micros</label>
+            </div>
+          </div>
+
+          <div class="mdc-checkbox-container">
+            <div class="mdc-form-field">
+              <div class="mdc-checkbox">
+                <input class="mdc-checkbox__native-control
+                              attribute-dialog-input"
+                        data-group="select"
+                        id="select-accelerator_micros"
+                        type="checkbox"
+                        value="accelerator_micros">
+                <div class="mdc-checkbox__background">
+                  <svg class="mdc-checkbox__checkmark"
+                       viewBox="0 0 24 24">
+                    <path class="mdc-checkbox__checkmark__path"
+                          d="M1.73,12.91 8.1,19.28 22.79,4.59"
+                          fill="none"
+                          stroke="white" />
+                  </svg>
+                  <div class="mdc-checkbox__mixedmark"></div>
+                </div>
+              </div>
+
+              <label for="select-accelerator_micros">Accelerator Micros</label>
+            </div>
+          </div>
+
+          <div class="mdc-checkbox-container">
+            <div class="mdc-form-field">
+              <div class="mdc-checkbox">
+                <input class="mdc-checkbox__native-control
+                              attribute-dialog-input"
+                        data-group="select"
+                        id="select-cpu_micros"
+                        type="checkbox"
+                        value="cpu_micros">
+                <div class="mdc-checkbox__background">
+                  <svg class="mdc-checkbox__checkmark"
+                       viewBox="0 0 24 24">
+                    <path class="mdc-checkbox__checkmark__path"
+                          d="M1.73,12.91 8.1,19.28 22.79,4.59"
+                          fill="none"
+                          stroke="white" />
+                  </svg>
+                  <div class="mdc-checkbox__mixedmark"></div>
+                </div>
+              </div>
+
+              <label for="select-cpu_micros">CPU Micros</label>
+            </div>
+          </div>
+
+          <div class="mdc-checkbox-container">
+            <div class="mdc-form-field">
+              <div class="mdc-checkbox">
+                <input class="mdc-checkbox__native-control
+                              attribute-dialog-input"
+                        data-group="select"
+                        id="select-params"
+                        type="checkbox"
+                        value="params">
+                <div class="mdc-checkbox__background">
+                  <svg class="mdc-checkbox__checkmark"
+                       viewBox="0 0 24 24">
+                    <path class="mdc-checkbox__checkmark__path"
+                          d="M1.73,12.91 8.1,19.28 22.79,4.59"
+                          fill="none"
+                          stroke="white" />
+                  </svg>
+                  <div class="mdc-checkbox__mixedmark"></div>
+                </div>
+              </div>
+
+              <label for="select-params">Params</label>
+            </div>
+          </div>
+
+          <div class="mdc-checkbox-container">
+            <div class="mdc-form-field">
+              <div class="mdc-checkbox">
+                <input class="mdc-checkbox__native-control
+                              attribute-dialog-input"
+                        data-group="select"
+                        id="select-float_ops"
+                        type="checkbox"
+                        value="float_ops">
+                <div class="mdc-checkbox__background">
+                  <svg class="mdc-checkbox__checkmark"
+                       viewBox="0 0 24 24">
+                    <path class="mdc-checkbox__checkmark__path"
+                          d="M1.73,12.91 8.1,19.28 22.79,4.59"
+                          fill="none"
+                          stroke="white" />
+                  </svg>
+                  <div class="mdc-checkbox__mixedmark"></div>
+                </div>
+              </div>
+
+              <label for="select-float_ops">Float Operations</label>
+            </div>
+          </div>
+
+          <div class="mdc-checkbox-container">
+            <div class="mdc-form-field">
+              <div class="mdc-checkbox">
+                <input class="mdc-checkbox__native-control
+                              attribute-dialog-input"
+                        data-group="select"
+                        id="select-occurrence"
+                        type="checkbox"
+                        value="occurrence">
+                <div class="mdc-checkbox__background">
+                  <svg class="mdc-checkbox__checkmark"
+                       viewBox="0 0 24 24">
+                    <path class="mdc-checkbox__checkmark__path"
+                          d="M1.73,12.91 8.1,19.28 22.79,4.59"
+                          fill="none"
+                          stroke="white" />
+                  </svg>
+                  <div class="mdc-checkbox__mixedmark"></div>
+                </div>
+              </div>
+
+              <label for="select-occurrence">Occurrence</label>
+            </div>
+          </div>
+        </section>
+
+        <footer class="mdc-dialog__footer">
+          <button class="mdc-button mdc-dialog__footer__button mdc-dialog__footer__button--accept"
+                  data-mdc-auto-init="MDCRipple"
+                  type="button">
+            Close
+          </button>
+        </footer>
+      </div>
+
+      <div class="mdc-dialog__backdrop"></div>
+    </aside>
+
+    <aside aria-describedby="dialog-minimums-section"
+           aria-labelledby="dialog-minimums-label"
+           class="mdc-dialog"
+           id="dialog-minimums"
+           role="alertdialog">
+      <div class="mdc-dialog__surface">
+        <header class="mdc-dialog__header">
+          <h2 class="mdc-dialog__header__title"
+              id="dialog-minimums-label">
+            Minimums
+          </h2>
+        </header>
+
+        <section id="dialog-minimums-section" class="mdc-dialog__body">
+          <label class="mdc-textfield"
+                 data-mdc-auto-init="MDCTextfield"
+                 title="Show nodes that request at least this number of bytes.">
+            <input class="mdc-textfield__input"
+                   data-type="number"
+                   name="min_bytes" />
+            <span class="mdc-textfield__label">Bytes</span>
+          </label>
+
+          <label class="mdc-textfield"
+                 data-mdc-auto-init="MDCTextfield"
+                 title="Show nodes that contain at least this number of float operations. Only available if an node has op.RegisterStatistics() defined and OpLogProto is provided.">
+            <input class="mdc-textfield__input"
+                   data-type="number"
+                   name="min_float_ops" />
+            <span class="mdc-textfield__label">Float Operations</span>
+          </label>
+
+          <label class="mdc-textfield"
+                 data-mdc-auto-init="MDCTextfield"
+                 title="Show nodes that spend at least this number of microseconds to run. It sums accelerator_micros and cpu_micros. Note: cpu and accelerator can run in parallel.">
+            <input class="mdc-textfield__input"
+                   data-type="number"
+                   name="min_micros" />
+            <span class="mdc-textfield__label">Micro Seconds</span>
+          </label>
+
+          <label class="mdc-textfield"
+                 data-mdc-auto-init="MDCTextfield"
+                 title="Show nodes that contains at least this number of parameters.">
+            <input class="mdc-textfield__input"
+                   data-type="number"
+                   name="min_occurrence" />
+            <span class="mdc-textfield__label">Occurrences</span>
+          </label>
+
+          <label class="mdc-textfield"
+                 data-mdc-auto-init="MDCTextfield"
+                 title="Show nodes that appear at least this number of times.">
+            <input class="mdc-textfield__input"
+                   data-type="number"
+                   name="min_params" />
+            <span class="mdc-textfield__label">Parameters</span>
+          </label>
+        </section>
+
+        <footer class="mdc-dialog__footer">
+          <button class="mdc-button mdc-dialog__footer__button mdc-dialog__footer__button--accept"
+                  data-mdc-auto-init="MDCRipple"
+                  type="button">
+            Close
+          </button>
+        </footer>
+      </div>
+
+      <div class="mdc-dialog__backdrop"></div>
+    </aside>
+
+    <aside aria-describedby="dialog-name-regexes-description"
+           aria-labelledby="dialog-name-regexes-label"
+           class="mdc-dialog"
+           id="dialog-name-regexes"
+           role="alertdialog">
+      <div class="mdc-dialog__surface">
+        <header class="mdc-dialog__header">
+          <h2 id="dialog-name-regexes-label" class="mdc-dialog__header__title">
+            Name Regexes
+          </h2>
+        </header>
+
+        <section id="dialog-name-regexes-description" class="mdc-dialog__body">
+          <label class="mdc-textfield"
+                 data-mdc-auto-init="MDCTextfield"
+                 title="Hide node that match the regexes. Regexes are comma-separated.">
+            <input class="mdc-textfield__input"
+                   data-type="string[]"
+                   name="hide_name_regexes"
+                   spellcheck="false" />
+            <span class="mdc-textfield__label">Hide Name</span>
+          </label>
+
+          <label class="mdc-textfield"
+                 data-mdc-auto-init="MDCTextfield"
+                 title="Show node that match the regexes. Regexes are comma-separated.">
+            <input class="mdc-textfield__input"
+                   data-type="string[]"
+                   name="show_name_regexes"
+                   spellcheck="false" />
+            <span class="mdc-textfield__label">Show Name</span>
+          </label>
+
+          <label class="mdc-textfield"
+                 data-mdc-auto-init="MDCTextfield"
+                 title="Show node starting from the node that matches the regexes, recursively. Regexes are comma-separated.">
+            <input class="mdc-textfield__input"
+                   data-type="string[]"
+                   name="start_name_regexes"
+                   spellcheck="false" />
+            <span class="mdc-textfield__label">Start Name</span>
+          </label>
+
+          <label class="mdc-textfield"
+                 data-mdc-auto-init="MDCTextfield"
+                 title="Hide node starting from the node that matches the regexes, recursively, regexes are comma-seprated.">
+            <input class="mdc-textfield__input"
+                   data-type="string[]"
+                   name="trim_name_regexes"
+                   spellcheck="false" />
+            <span class="mdc-textfield__label">Trim Name</span>
+          </label>
+        </section>
+
+        <footer class="mdc-dialog__footer">
+          <button class="mdc-button mdc-dialog__footer__button mdc-dialog__footer__button--accept"
+                  data-mdc-auto-init="MDCRipple"
+                  type="button">
+            Close
+          </button>
+        </footer>
+      </div>
+
+      <div class="mdc-dialog__backdrop"></div>
+    </aside>
+
+    <div class="scripts">
+      <script>
+        // Prevents an extra request for "deps.js"
+        CLOSURE_NO_DEPS = true;
+      </script>
+      <script src="{{ mdc_base_url }}material-components-web.min.js"></script>
+      <script src="{{ url_for('static', filename='js/app.js') }}?ts={{timestamp}}"></script>
+      <script>
+        // TODO(cfa): Move this to an external script, when the Material Web
+        //            Components support karma tests.
+
+        // Initialize material components.
+        mdc.autoInit();
+        this.initializeMaterialDialog(
+            '#dialog-select', '.button-select', '[name="select"]');
+        this.initializeMaterialDialog('#dialog-minimums', '#button-minimums');
+        this.initializeMaterialDialog(
+            '#dialog-name-regexes', '#button-name-regexes');
+
+        /**
+         * Sets up a dialog, along with an element that will activate it when
+         * clicked. Optionally sets up an input that will be updated when the
+         * dialog is closed.
+         * @param {string} dialogSelector
+         * @param {string} clickSelector
+         * @param {string=} sidebarInputSelector
+         */
+        function initializeMaterialDialog(
+            dialogSelector, clickSelector, sidebarInputSelector = '') {
+          // Instantiate the material dialog.
+          const dialog = new mdc.dialog.MDCDialog(
+              document.querySelector(dialogSelector));
+
+          // Handle clicks on an element that will activate the dialog.
+          document.querySelector(clickSelector).addEventListener(
+              'click', (e) => {
+                e.preventDefault();
+
+                if (document.activeElement) {
+                  document.activeElement.blur();
+                }
+
+                dialog.lastFocusedTarget = e.target;
+                dialog.show();
+              });
+
+          // Set an input that will be updated when the dialog closes.
+          if (sidebarInputSelector) {
+            const dialogEl = document.querySelector(dialogSelector);
+            const sidebarInputEl = document.querySelector(sidebarInputSelector);
+            const updateSidebarOnClose = () => {
+              const inputs = Array.from(dialogEl.querySelectorAll('input'));
+              const values = inputs.filter((el) => el.checked)
+                                   .map((el) => el.value);
+              if (values.length) {
+                sidebarInputEl.value = values.join(', ');
+              } else {
+                alert('At least one attribute must be selected.');
+              }
+            };
+
+            dialog.listen('MDCDialog:accept', updateSidebarOnClose);
+            dialog.listen('MDCDialog:cancel', updateSidebarOnClose);
+          } else {
+            const updateSidebarOnClose = () => {
+              shell.crawlFormAndRenderWithoutSendingRequest();
+            };
+            dialog.listen('MDCDialog:accept', updateSidebarOnClose);
+            dialog.listen('MDCDialog:cancel', updateSidebarOnClose);
+          }
+        }
+
+        // Handle clicks in mat-switch-container elements.
+        Array.from(document.querySelectorAll('.mdc-switch-container'))
+          .forEach((el) => {
+            el.addEventListener('click', (e) => {
+              if (e.target.classList.contains('mdc-switch-container')) {
+                const inputEl = el.querySelector('input');
+                inputEl.focus();
+                inputEl.checked = !inputEl.checked;
+              }
+            });
+        });
+
+        // Handle clicks in mat-button-container elements.
+        Array.from(document.querySelectorAll('.mdc-button-container'))
+          .forEach((el) => {
+            el.addEventListener('click', (e) => {
+              if (e.target.tagName !== 'BUTTON') {
+                e.preventDefault();
+                const buttonEl = el.querySelector('button');
+                buttonEl.click();
+              }
+            });
+          });
+
+        // Set up the "prebuilt options" material component.
+        const prebuiltOptionsSelect =
+            new mdc.select.MDCSelect(document.querySelector('.mdc-select.prebuilt'));
+        prebuiltOptionsSelect.listen('MDCSelect:change', () => {
+          location.hash = prebuiltOptionsSelect.value;
+          localStorage.hasPickedPreset = 'true';
+        });
+
+        // Set up the "order_by" material component.
+        const orderBySelect = new mdc.select.MDCSelect(
+            document.querySelector('.mdc-select.order_by'));
+        orderBySelect.listen('MDCSelect:change', () => {
+          document.querySelector('[name=order_by]').value =
+              orderBySelect.value.replace('order_by_', '');
+        });
+
+        /** Renders material components after the shell. */
+        function renderMaterialComponents() {
+          // Render the "prebuilt options" material component.
+          const targetHash = location.hash && location.hash.slice(1);
+          let selectedIndex = 0;
+          for (let i = 0; i < prebuiltOptionsSelect.options.length; i++) {
+            if (prebuiltOptionsSelect.options[i].id === targetHash) {
+              selectedIndex = i;
+              break;
+            }
+          }
+          prebuiltOptionsSelect.selectedIndex = selectedIndex;
+
+          // Render the "order_by" material component.
+          const orderBy = document.querySelector('[name=order_by]').value;
+          for (let i = 0; i < orderBySelect.options.length; i++) {
+            if (orderBySelect.options[i].innerText === orderBy) {
+              orderBySelect.selectedIndex = i;
+              break;
+            }
+          }
+
+          // Render the beginner label.
+          const beginnerLabelEl = document.querySelector('.mdc-select.prebuilt .mdc-select-label');
+          beginnerLabelEl.classList.toggle('alert', !localStorage.hasPickedPreset);
+          if (localStorage.hasPickedPreset) {
+            beginnerLabelEl.innerText = 'Presets';
+          } else {
+            beginnerLabelEl.innerText = 'Beginners, please click here';
+          }
+        }
+
+        // Set up Catapult.
+        const catapultContainer = document.createElement('track-view-container');
+        catapultContainer.id = 'track_view_container';
+        const catapultViewer = document.createElement('tr-ui-timeline-view');
+        catapultViewer.track_view_container = catapultContainer;
+        Polymer.dom(catapultViewer).appendChild(catapultContainer);
+        catapultViewer.id = 'trace-viewer';
+        catapultViewer.globalMode = true;
+        Polymer.dom(document.querySelector('.profiler-view-catapult')).appendChild(catapultViewer);
+
+        /**
+         * Renders trace JSON with Catapult.
+         * @param {!Object} trace
+         */
+        function renderTraceWithCatapult(trace) {
+          const model = new tr.Model();
+          const importer = new tr.importer.Import(model);
+          const promise = importer.importTracesWithProgressDialog([trace]);
+          promise.then(() => {
+            catapultViewer.model = model;
+          });
+        }
+
+        // Start the UI.
+        const shell = new Shell(renderTraceWithCatapult);
+        shell.refresh();
+
+        // Render material components, and handle hash changes.
+        renderMaterialComponents();
+        window.addEventListener('hashchange', renderMaterialComponents);
+      </script>
+    </div>
+
+    <div class="loading-overlay">
+      <div role="progressbar" class="mdc-linear-progress mdc-linear-progress--indeterminate">
+        <div class="mdc-linear-progress__buffering-dots"></div>
+        <div class="mdc-linear-progress__buffer"></div>
+        <div class="mdc-linear-progress__bar mdc-linear-progress__primary-bar">
+          <span class="mdc-linear-progress__bar-inner"></span>
+        </div>
+        <div class="mdc-linear-progress__bar mdc-linear-progress__secondary-bar">
+          <span class="mdc-linear-progress__bar-inner"></span>
+        </div>
+      </div>
+
+      <div class="initial-loading-title">
+        Tracing model and waiting for file <span class="filepath"></span>.
+      </div>
+    </div>
+  </body>
+</html>
