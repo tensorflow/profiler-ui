@@ -385,7 +385,8 @@ class ProfileOptions {
 function loadProfileOptionsFromHash() {
   try {
     const profileOptions = new ProfileOptions();
-    const objectFromHash = JSON.parse(location.hash.slice(1));
+    const objectFromHash =
+        JSON.parse(decodeURIComponent(location.hash.slice(1)));
     if (objectFromHash && typeof objectFromHash === 'object') {
       Object.assign(
           profileOptions, /** @type {!Object<string, *>} */ (objectFromHash));
