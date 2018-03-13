@@ -20,5 +20,8 @@ You can learn more about the TensorFlow Profiler's Python API and CLI [here](htt
 # Screenshot
 <img src="docs/images/preview.png">
 
+# Browser Support
+Currently only [Chrome](https://www.google.com/chrome/) is supported.
+
 # Contributing
 Please see [our contributor's guide](/CONTRIBUTING.md)
