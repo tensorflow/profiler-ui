@@ -15,7 +15,7 @@
 """Utility methods for the TensorFlow Profiler UI."""
 import os
 from tensorflow import gfile
-from constants import PROFILER_LOG_DIR
+from .constants import PROFILER_LOG_DIR
 
 
 def remove_tmp_files():

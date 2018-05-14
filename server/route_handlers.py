@@ -17,12 +17,12 @@ import json
 import os
 import subprocess
 from time import time as now
-from constants import MDC_BASE_URL
-from constants import PROFILER_LOG_DIR
-from constants import PROFILER_LOG_PATH
-from constants import PROFILER_PPROF_IMAGE_PATH
-from constants import PROFILER_TIMELINE_HTML_PATH
-from utils import remove_tmp_files
+from .constants import MDC_BASE_URL
+from .constants import PROFILER_LOG_DIR
+from .constants import PROFILER_LOG_PATH
+from .constants import PROFILER_PPROF_IMAGE_PATH
+from .constants import PROFILER_TIMELINE_HTML_PATH
+from .utils import remove_tmp_files
 import flask
 from tensorflow import gfile
 from tensorflow.python import pywrap_tensorflow as pwtf

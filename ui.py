@@ -34,7 +34,7 @@ def main(_):
     return
 
   # Create profiler from profile context.
-  ProfilerFromFile(FLAGS.profile_context_path)
+  ProfilerFromFile(FLAGS.profile_context_path.encode('utf-8'))
 
   # Start server.
   start_server(FLAGS.server_port)

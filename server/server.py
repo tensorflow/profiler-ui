@@ -17,10 +17,10 @@ import os
 import threading
 import webbrowser
 import flask
-from route_handlers import handle_home_page
-from route_handlers import handle_loading_page
-from route_handlers import handle_profile_api
-from utils import prepare_tmp_dir
+from .route_handlers import handle_home_page
+from .route_handlers import handle_loading_page
+from .route_handlers import handle_profile_api
+from .utils import prepare_tmp_dir
 
 
 def start_server(port):
