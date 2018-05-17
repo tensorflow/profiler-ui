@@ -15,6 +15,7 @@
 # limitations under the License.
 
 """CLI for the TensorFlow Profiler UI."""
+import os
 import sys
 from server.server import start_server
 import tensorflow as tf
@@ -29,12 +30,20 @@ flags.DEFINE_string('profile_context_path', '', 'Path to profile context.')
 
 
 def main(_):
-  if not FLAGS.profile_context_path:
+  profile_path = os.path.expanduser(FLAGS.profile_context_path)
+
+  # Require "profile_context_path" flag.
+  if not profile_path:
     sys.stderr.write('Please provide a value for "profile_context_path".\n')
     return
 
+  # Verify profile context file exists.
+  if not os.path.isfile(profile_path) :
+    sys.stderr.write('No file was found at "{}".\n'.format(profile_path))
+    return
+
   # Create profiler from profile context.
-  ProfilerFromFile(FLAGS.profile_context_path.encode('utf-8'))
+  ProfilerFromFile(profile_path.encode('utf-8'))
 
   # Start server.
   start_server(FLAGS.server_port)
