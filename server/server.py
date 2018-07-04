@@ -61,7 +61,7 @@ def start_server(port):
 
   # Define URL.
   host = '0.0.0.0'
-  url = 'http://{}:{}'.format(host, port)
+  url = 'http://localhost:{}'.format(port)
 
   # Open new browser window after short delay.
   threading.Timer(1, lambda: webbrowser.open(url)).start()
