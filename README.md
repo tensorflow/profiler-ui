@@ -8,7 +8,7 @@ The TensorFlow Profiler (TFProf) UI provides a visual interface for profiling Te
    pip install --user -r requirements.txt
    ```
 2) Install [pprof](https://github.com/google/pprof#building-pprof).
-3) Create a [profile context](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/profiler/README.md#quick-start).
+3) Create a profile context file using the [tf.contrib.tfprof.ProfileContext](https://github.com/tensorflow/tensorflow/blob/v1.8.0/tensorflow/python/profiler/profile_context.py#L110-L148) class.
 3) Start the UI.
    ```s
    python ui.py --profile_context_path=/path/to/your/profile.context
