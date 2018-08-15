@@ -27,6 +27,7 @@ from tensorflow.python.pywrap_tensorflow import ProfilerFromFile
 FLAGS = flags.FLAGS
 flags.DEFINE_integer('server_port', 7007, 'Flask server port.')
 flags.DEFINE_string('profile_context_path', '', 'Path to profile context.')
+flags.DEFINE_boolean('browser', True, 'Open browser after startup.')
 
 
 def main(_):
@@ -46,7 +47,7 @@ def main(_):
   ProfilerFromFile(profile_path.encode('utf-8'))
 
   # Start server.
-  start_server(FLAGS.server_port)
+  start_server(FLAGS.server_port, FLAGS.browser)
 
 
 if __name__ == '__main__':

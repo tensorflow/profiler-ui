@@ -23,7 +23,7 @@ from .route_handlers import handle_profile_api
 from .utils import prepare_tmp_dir
 
 
-def start_server(port):
+def start_server(port, open_browser):
   """Starts Flask web server."""
 
   # Define and prepare directories.
@@ -63,8 +63,9 @@ def start_server(port):
   host = '0.0.0.0'
   url = 'http://localhost:{}'.format(port)
 
-  # Open new browser window after short delay.
-  threading.Timer(1, lambda: webbrowser.open(url)).start()
+  if open_browser:
+    # Open new browser window after short delay.
+    threading.Timer(1, lambda: webbrowser.open(url)).start()
 
   # Starting the server, and then opening browser after a delay
   app.run(host, port, threaded=True)
