@@ -20,8 +20,12 @@ You can learn more about the TensorFlow Profiler's Python API and CLI [here](htt
 # Screenshot
 <img src="docs/images/preview.png">
 
-# Browser Support
+# Browser support
 Currently only [Chrome](https://www.google.com/chrome/) is supported.
 
 # Contributing
 Please see [our contributor's guide](/CONTRIBUTING.md)
+
+# Feature requests
+Want ideas for ways to contribute to the TensorFlow Profiler UI? Here are some requested features: 
+- Support multiple profile contexts at once ([#11](https://github.com/tensorflow/profiler-ui/issues/11))
