@@ -1,3 +1,7 @@
+# Note: This project has been deprecated in favor of TensorBoard
+
+https://www.tensorflow.org/tensorboard/r2/tensorboard_profiling_keras
+
 # TensorFlow Profiler UI
 
 The TensorFlow Profiler (TFProf) UI provides a visual interface for profiling TensorFlow models.
